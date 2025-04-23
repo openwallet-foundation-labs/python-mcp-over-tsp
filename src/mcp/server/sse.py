@@ -78,6 +78,8 @@ class SseServerTransport:
         self._read_stream_writers = {}
         logger.debug(f"SseServerTransport initialized with endpoint: {endpoint}")
 
+        print("server: haha yes")
+
     @asynccontextmanager
     async def connect_sse(self, scope: Scope, receive: Receive, send: Send):
         if scope["type"] != "http":

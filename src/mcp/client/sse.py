@@ -40,6 +40,8 @@ async def sse_client(
     read_stream_writer, read_stream = anyio.create_memory_object_stream(0)
     write_stream, write_stream_reader = anyio.create_memory_object_stream(0)
 
+    print("client: haha yes")
+
     async with anyio.create_task_group() as tg:
         try:
             logger.info(f"Connecting to SSE endpoint: {remove_request_params(url)}")

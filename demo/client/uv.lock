@@ -2,9 +2,6 @@ version = 1
 revision = 2
 requires-python = ">=3.11"
 
-[options]
-resolution-mode = "lowest-direct"
-
 [[package]]
 name = "annotated-types"
 version = "0.7.0"
@@ -16,7 +13,7 @@ wheels = [
 
 [[package]]
 name = "anthropic"
-version = "0.49.0"
+version = "0.50.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -27,9 +24,9 @@ dependencies = [
     { name = "sniffio" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/86/e3/a88c8494ce4d1a88252b9e053607e885f9b14d0a32273d47b727cbee4228/anthropic-0.49.0.tar.gz", hash = "sha256:c09e885b0f674b9119b4f296d8508907f6cff0009bc20d5cf6b35936c40b4398", size = 210016, upload_time = "2025-02-28T19:35:47.01Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/40/85/4dd9f80da0727c56d7e7f7c627cb724edd9e6df062df6ecc0e90f06e6dbb/anthropic-0.50.0.tar.gz", hash = "sha256:42175ec04ce4ff2fa37cd436710206aadff546ee99d70d974699f59b49adc66f", size = 213021, upload_time = "2025-04-22T23:11:38.459Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/76/74/5d90ad14d55fbe3f9c474fdcb6e34b4bed99e3be8efac98734a5ddce88c1/anthropic-0.49.0-py3-none-any.whl", hash = "sha256:bbc17ad4e7094988d2fa86b87753ded8dce12498f4b85fe5810f208f454a8375", size = 243368, upload_time = "2025-02-28T19:35:44.963Z" },
+    { url = "https://files.pythonhosted.org/packages/35/ae/975f97ad5581a9e187a3717e21d79d6c7ad6be926fee9aa8a15b3d9f8f37/anthropic-0.50.0-py3-none-any.whl", hash = "sha256:defbd79327ca2fa61fd7b9eb2f1627dfb1f69c25d49288c52e167ddb84574f80", size = 245291, upload_time = "2025-04-22T23:11:36.434Z" },
 ]
 
 [[package]]
@@ -189,8 +186,7 @@ wheels = [
 
 [[package]]
 name = "mcp"
-version = "1.6.0"
-source = { registry = "https://pypi.org/simple" }
+source = { directory = "../../" }
 dependencies = [
     { name = "anyio" },
     { name = "httpx" },
@@ -199,11 +195,41 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "sse-starlette" },
     { name = "starlette" },
-    { name = "uvicorn" },
+    { name = "uvicorn", marker = "sys_platform != 'emscripten'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/95/d2/f587cb965a56e992634bebc8611c5b579af912b74e04eb9164bd49527d21/mcp-1.6.0.tar.gz", hash = "sha256:d9324876de2c5637369f43161cd71eebfd803df5a95e46225cab8d280e366723", size = 200031, upload_time = "2025-03-27T16:46:32.336Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/10/30/20a7f33b0b884a9d14dd3aa94ff1ac9da1479fe2ad66dd9e2736075d2506/mcp-1.6.0-py3-none-any.whl", hash = "sha256:7bd24c6ea042dbec44c754f100984d186620d8b841ec30f1b19eda9b93a634d0", size = 76077, upload_time = "2025-03-27T16:46:29.919Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "anyio", specifier = ">=4.5" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "httpx-sse", specifier = ">=0.4" },
+    { name = "pydantic", specifier = ">=2.7.2,<3.0.0" },
+    { name = "pydantic-settings", specifier = ">=2.5.2" },
+    { name = "python-dotenv", marker = "extra == 'cli'", specifier = ">=1.0.0" },
+    { name = "rich", marker = "extra == 'rich'", specifier = ">=13.9.4" },
+    { name = "sse-starlette", specifier = ">=1.6.1" },
+    { name = "starlette", specifier = ">=0.27" },
+    { name = "typer", marker = "extra == 'cli'", specifier = ">=0.12.4" },
+    { name = "uvicorn", marker = "sys_platform != 'emscripten'", specifier = ">=0.23.1" },
+    { name = "websockets", marker = "extra == 'ws'", specifier = ">=15.0.1" },
+]
+provides-extras = ["cli", "rich", "ws"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pyright", specifier = ">=1.1.391" },
+    { name = "pytest", specifier = ">=8.3.4" },
+    { name = "pytest-examples", specifier = ">=0.0.14" },
+    { name = "pytest-flakefinder", specifier = ">=1.1.0" },
+    { name = "pytest-xdist", specifier = ">=3.6.1" },
+    { name = "ruff", specifier = ">=0.8.5" },
+    { name = "trio", specifier = ">=0.26.2" },
+]
+docs = [
+    { name = "mkdocs", specifier = ">=1.6.1" },
+    { name = "mkdocs-glightbox", specifier = ">=0.4.0" },
+    { name = "mkdocs-material", extras = ["imaging"], specifier = ">=9.5.45" },
+    { name = "mkdocstrings-python", specifier = ">=1.12.2" },
 ]
 
 [[package]]
@@ -219,7 +245,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", specifier = ">=0.49.0" },
-    { name = "mcp", specifier = ">=1.6.0" },
+    { name = "mcp", directory = "../../" },
     { name = "python-dotenv", specifier = ">=1.1.0" },
 ]
 
