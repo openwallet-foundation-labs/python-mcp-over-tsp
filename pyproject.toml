@@ -30,6 +30,7 @@ dependencies = [
     "sse-starlette>=1.6.1",
     "pydantic-settings>=2.5.2",
     "uvicorn>=0.23.1; sys_platform != 'emscripten'",
+    "tsp-python",
 ]
 
 [project.optional-dependencies]
@@ -102,10 +103,11 @@ target-version = "py310"
 "tests/server/fastmcp/test_func_metadata.py" = ["E501"]
 
 [tool.uv.workspace]
-members = ["examples/servers/*"]
+members = ["examples/servers/*", "demo/*"]
 
 [tool.uv.sources]
 mcp = { workspace = true }
+tsp-python = { path = "../tsp/tsp_python" }
 
 [tool.pytest.ini_options]
 xfail_strict = true
@@ -114,5 +116,5 @@ filterwarnings = [
     # This should be fixed on Uvicorn's side.
     "ignore::DeprecationWarning:websockets",
     "ignore:websockets.server.WebSocketServerProtocol is deprecated:DeprecationWarning",
-    "ignore:Returning str or bytes.*:DeprecationWarning:mcp.server.lowlevel"
+    "ignore:Returning str or bytes.*:DeprecationWarning:mcp.server.lowlevel",
 ]

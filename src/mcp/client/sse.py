@@ -2,9 +2,12 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any
 from urllib.parse import urljoin, urlparse
+from uuid import uuid4
 
 import anyio
 import httpx
+import requests
+import tsp_python as tsp
 from anyio.abc import TaskStatus
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from httpx_sse import aconnect_sse
@@ -40,7 +43,26 @@ async def sse_client(
     read_stream_writer, read_stream = anyio.create_memory_object_stream(0)
     write_stream, write_stream_reader = anyio.create_memory_object_stream(0)
 
-    print("client: haha yes")
+    store = tsp.Store()
+
+    # Initialize TSP identity
+    name = "McpClient" + str(uuid4()).replace("-", "")
+    did = "did:web:did.teaspoon.world:user:" + name
+    identity = tsp.OwnedVid.bind(did, "https://demo.teaspoon.world/user/" + name)
+
+    # Publish DID (this is non-standard and dependents on the implementation of the DID support server)
+    response = requests.post(
+        "https://did.teaspoon.world/add-vid",
+        data=identity.json(),
+        headers={"Content-type": "application/json"},
+    )
+    if not response.ok:
+        raise Exception(
+            f"Could not publish DID (status code: {response.status_code}):\n{identity.json()}"
+        )
+    print("Published server DID: " + did)
+
+    store.add_private_vid(identity)
 
     async with anyio.create_task_group() as tg:
         try:

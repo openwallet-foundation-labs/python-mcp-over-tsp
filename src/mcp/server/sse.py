@@ -38,6 +38,8 @@ from urllib.parse import quote
 from uuid import UUID, uuid4
 
 import anyio
+import requests
+import tsp_python as tsp
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from pydantic import ValidationError
 from sse_starlette import EventSourceResponse
@@ -78,7 +80,26 @@ class SseServerTransport:
         self._read_stream_writers = {}
         logger.debug(f"SseServerTransport initialized with endpoint: {endpoint}")
 
-        print("server: haha yes")
+        self._store = tsp.Store()
+
+        # Initialize TSP identity
+        name = "McpServer" + str(uuid4()).replace("-", "")
+        did = "did:web:did.teaspoon.world:user:" + name
+        identity = tsp.OwnedVid.bind(did, "https://demo.teaspoon.world/user/" + name)
+
+        # Publish DID (this is non-standard and dependents on the implementation of the DID support server)
+        response = requests.post(
+            "https://did.teaspoon.world/add-vid",
+            data=identity.json(),
+            headers={"Content-type": "application/json"},
+        )
+        if not response.ok:
+            raise Exception(
+                f"Could not publish DID (status code: {response.status_code}):\n{identity.json()}"
+            )
+        logger.info("Published server DID: " + did)
+
+        self._store.add_private_vid(identity)
 
     @asynccontextmanager
     async def connect_sse(self, scope: Scope, receive: Receive, send: Send):

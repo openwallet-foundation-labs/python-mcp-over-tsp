@@ -6,8 +6,5 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = ["mcp"]
 
-[tool.hatch.metadata]
-allow-direct-references = true
-
 [tool.uv.sources]
-mcp = { path = "../../" }
+mcp = { workspace = true }
