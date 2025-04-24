@@ -31,6 +31,7 @@ Example usage:
 See SseServerTransport class documentation for more details.
 """
 
+import json
 import logging
 from contextlib import asynccontextmanager
 from typing import Any
@@ -69,7 +70,7 @@ class SseServerTransport:
         UUID, MemoryObjectSendStream[types.JSONRPCMessage | Exception]
     ]
 
-    def __init__(self, endpoint: str) -> None:
+    def __init__(self, transport: str, endpoint: str) -> None:
         """
         Creates a new SSE server transport, which will direct the client to POST
         messages to the relative or absolute URL given.
@@ -84,8 +85,8 @@ class SseServerTransport:
 
         # Initialize TSP identity
         name = "McpServer" + str(uuid4()).replace("-", "")
-        did = "did:web:did.teaspoon.world:user:" + name
-        identity = tsp.OwnedVid.bind(did, "https://demo.teaspoon.world/user/" + name)
+        self._did = "did:web:did.teaspoon.world:user:" + name
+        identity = tsp.OwnedVid.bind(self._did, transport)
 
         # Publish DID (this is non-standard and dependents on the implementation of the DID support server)
         response = requests.post(
@@ -97,7 +98,7 @@ class SseServerTransport:
             raise Exception(
                 f"Could not publish DID (status code: {response.status_code}):\n{identity.json()}"
             )
-        print("Published server DID: " + did)
+        print("Published server DID: " + self._did)
 
         self._store.add_private_vid(identity)
 

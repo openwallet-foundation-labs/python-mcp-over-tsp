@@ -1,13 +1,11 @@
 import asyncio
-from typing import Optional
 from contextlib import AsyncExitStack
-
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
-from mcp.client.sse import sse_client
 
 from anthropic import Anthropic
 from dotenv import load_dotenv
+
+import mcp
+from mcp.client.sse import sse_client
 
 load_dotenv()  # load environment variables from .env
 
@@ -15,7 +13,7 @@ load_dotenv()  # load environment variables from .env
 class MCPClient:
     def __init__(self):
         # Initialize session and client objects
-        self.session: Optional[ClientSession] = None
+        self.session: mcp.ClientSession | None = None
         self.exit_stack = AsyncExitStack()
         self.anthropic = Anthropic()
 
@@ -30,7 +28,7 @@ class MCPClient:
         )
 
         self.session = await self.exit_stack.enter_async_context(
-            ClientSession(self.read, self.write)
+            mcp.ClientSession(self.read, self.write)
         )
 
         await self.session.initialize()
@@ -132,7 +130,7 @@ class MCPClient:
 
 async def main():
     if len(sys.argv) < 2:
-        print("Usage: uv run client.py http://127.0.0.1:8000/sse")
+        print("Usage: uv run client.py did:web:did.teaspoon.world:user:YourMcpServer")
         sys.exit(1)
 
     client = MCPClient()

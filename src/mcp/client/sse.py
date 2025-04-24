@@ -23,7 +23,7 @@ def remove_request_params(url: str) -> str:
 
 @asynccontextmanager
 async def sse_client(
-    url: str,
+    server_did: str,
     headers: dict[str, Any] | None = None,
     timeout: float = 5,
     sse_read_timeout: float = 60 * 5,
@@ -48,7 +48,7 @@ async def sse_client(
     # Initialize TSP identity
     name = "McpClient" + str(uuid4()).replace("-", "")
     did = "did:web:did.teaspoon.world:user:" + name
-    identity = tsp.OwnedVid.bind(did, "https://demo.teaspoon.world/user/" + name)
+    identity = tsp.OwnedVid.bind(did, "mcpclient://")
 
     # Publish DID (this is non-standard and dependents on the implementation of the DID support server)
     response = requests.post(
@@ -57,12 +57,14 @@ async def sse_client(
         headers={"Content-type": "application/json"},
     )
     if not response.ok:
-        raise Exception(
-            f"Could not publish DID (status code: {response.status_code}):\n{identity.json()}"
-        )
-    print("Published server DID: " + did)
+        raise Exception(f"Could not publish DID (status code: {response.status_code})")
+    print("Published client DID:", did)
 
     store.add_private_vid(identity)
+
+    # Resolve server
+    url = store.resolve_did_web(server_did)
+    print("Server endpoint:", url)
 
     async with anyio.create_task_group() as tg:
         try:
