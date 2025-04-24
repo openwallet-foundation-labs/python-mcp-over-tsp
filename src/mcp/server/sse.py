@@ -80,7 +80,7 @@ class SseServerTransport:
         self._read_stream_writers = {}
         logger.debug(f"SseServerTransport initialized with endpoint: {endpoint}")
 
-        self._store = tsp.Store()
+        self._store = tsp.SecureStore()
 
         # Initialize TSP identity
         name = "McpServer" + str(uuid4()).replace("-", "")
@@ -97,7 +97,7 @@ class SseServerTransport:
             raise Exception(
                 f"Could not publish DID (status code: {response.status_code}):\n{identity.json()}"
             )
-        logger.info("Published server DID: " + did)
+        print("Published server DID: " + did)
 
         self._store.add_private_vid(identity)
 

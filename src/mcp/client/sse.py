@@ -43,7 +43,7 @@ async def sse_client(
     read_stream_writer, read_stream = anyio.create_memory_object_stream(0)
     write_stream, write_stream_reader = anyio.create_memory_object_stream(0)
 
-    store = tsp.Store()
+    store = tsp.SecureStore()
 
     # Initialize TSP identity
     name = "McpClient" + str(uuid4()).replace("-", "")

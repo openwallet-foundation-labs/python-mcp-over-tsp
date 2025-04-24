@@ -107,7 +107,7 @@ members = ["examples/servers/*", "demo/*"]
 
 [tool.uv.sources]
 mcp = { workspace = true }
-tsp-python = { path = "../tsp/tsp_python" }
+tsp-python = { git = "https://github.com/openwallet-foundation-labs/tsp", subdirectory = "tsp_python", branch = "python-imrovements" }
 
 [tool.pytest.ini_options]
 xfail_strict = true
