@@ -1,3 +1,4 @@
+import json
 import logging
 from contextlib import asynccontextmanager
 from typing import Any
@@ -138,14 +139,21 @@ async def sse_client(
                         try:
                             async with write_stream_reader:
                                 async for message in write_stream_reader:
+                                    # Encrypt & sign message with TSP
                                     logger.debug(f"Sending client message: {message}")
-                                    response = await client.post(
-                                        endpoint_url,
-                                        json=message.model_dump(
+                                    json_message = json.dumps(
+                                        message.model_dump(
                                             by_alias=True,
                                             mode="json",
                                             exclude_none=True,
-                                        ),
+                                        )
+                                    ).encode("utf-8")
+                                    _, tsp_message = store.seal_message(
+                                        did, server_did, json_message
+                                    )
+                                    print("Sending POST message:", tsp_message)
+                                    response = await client.post(
+                                        endpoint_url, data=tsp_message
                                     )
                                     response.raise_for_status()
                                     logger.debug(

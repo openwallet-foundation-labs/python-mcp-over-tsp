@@ -180,11 +180,25 @@ class SseServerTransport:
             response = Response("Could not find session", status_code=404)
             return await response(scope, receive, send)
 
+        # Open TSP message
         body = await request.body()
-        logger.debug(f"Received JSON: {body}")
+        logger.debug(f"Received TSP message: {body}")
+        (sender, receiver) = self._store.get_sender_receiver(body)
+        if receiver != self._did:
+            logger.warning(f"Received message intended for: {receiver}")
+            response = Response("Incorrect receiver", status_code=400)
+            return await response(scope, receive, send)
+
+        self._store.resolve_did_web(
+            sender
+        )  # TODO: only do this once during connection establishment
+
+        json_text = self._store.open_message(body).message
+
+        logger.info(f"Decoded TSP message: {json_text}")
 
         try:
-            message = types.JSONRPCMessage.model_validate_json(body)
+            message = types.JSONRPCMessage.model_validate_json(json_text)
             logger.debug(f"Validated client message: {message}")
         except ValidationError as err:
             logger.error(f"Failed to parse message: {err}")
