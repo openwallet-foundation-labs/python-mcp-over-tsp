@@ -31,6 +31,7 @@ Example usage:
 See SseServerTransport class documentation for more details.
 """
 
+import base64
 import json
 import logging
 from contextlib import asynccontextmanager
@@ -67,7 +68,7 @@ class SseServerTransport:
 
     _endpoint: str
     _read_stream_writers: dict[
-        UUID, MemoryObjectSendStream[types.JSONRPCMessage | Exception]
+        str, MemoryObjectSendStream[types.JSONRPCMessage | Exception]
     ]
 
     def __init__(self, transport: str, endpoint: str) -> None:
@@ -118,30 +119,41 @@ class SseServerTransport:
         read_stream_writer, read_stream = anyio.create_memory_object_stream(0)
         write_stream, write_stream_reader = anyio.create_memory_object_stream(0)
 
-        session_id = uuid4()
-        session_uri = f"{quote(self._endpoint)}?session_id={session_id.hex}"
-        self._read_stream_writers[session_id] = read_stream_writer
-        logger.debug(f"Created new session with ID: {session_id}")
+        request = Request(scope, receive)
+        user_did = request.query_params.get("did")
+        if user_did is None:
+            logger.warning("Received request without user did")
+            raise Exception("did is required")
+        self._store.resolve_did_web(user_did)
+
+        session_uri = quote(self._endpoint)
+        logger.debug(f"Created new session with ID: {user_did}")
+        self._read_stream_writers[user_did] = read_stream_writer
 
         sse_stream_writer, sse_stream_reader = anyio.create_memory_object_stream[
             dict[str, Any]
         ](0)
 
+        async def sse_send(event, data):
+            self._store.resolve_did_web(user_did)
+            json_message = json.dumps({"event": event, "data": data}).encode("utf-8")
+            logger.debug(f"Encoding TSP message: {json_message}")
+            _, tsp_message = self._store.seal_message(self._did, user_did, json_message)
+            encoded_message = base64.b64encode(tsp_message, b"-_").decode("ascii")
+            logger.info(f"Sending TSP message: {encoded_message}")
+            await sse_stream_writer.send({"event": "message", "data": encoded_message})
+
         async def sse_writer():
             logger.debug("Starting SSE writer")
             async with sse_stream_writer, write_stream_reader:
-                await sse_stream_writer.send({"event": "endpoint", "data": session_uri})
+                await sse_send("endpoint", session_uri)
                 logger.debug(f"Sent endpoint event: {session_uri}")
 
                 async for message in write_stream_reader:
                     logger.debug(f"Sending message via SSE: {message}")
-                    await sse_stream_writer.send(
-                        {
-                            "event": "message",
-                            "data": message.model_dump_json(
-                                by_alias=True, exclude_none=True
-                            ),
-                        }
+                    await sse_send(
+                        "message",
+                        message.model_dump_json(by_alias=True, exclude_none=True),
                     )
 
         async with anyio.create_task_group() as tg:
@@ -160,27 +172,7 @@ class SseServerTransport:
         logger.debug("Handling POST message")
         request = Request(scope, receive)
 
-        session_id_param = request.query_params.get("session_id")
-        if session_id_param is None:
-            logger.warning("Received request without session_id")
-            response = Response("session_id is required", status_code=400)
-            return await response(scope, receive, send)
-
-        try:
-            session_id = UUID(hex=session_id_param)
-            logger.debug(f"Parsed session ID: {session_id}")
-        except ValueError:
-            logger.warning(f"Received invalid session ID: {session_id_param}")
-            response = Response("Invalid session ID", status_code=400)
-            return await response(scope, receive, send)
-
-        writer = self._read_stream_writers.get(session_id)
-        if not writer:
-            logger.warning(f"Could not find session for ID: {session_id}")
-            response = Response("Could not find session", status_code=404)
-            return await response(scope, receive, send)
-
-        # Open TSP message
+        # Open TSP message (only works for known sender DIDs)
         body = await request.body()
         logger.debug(f"Received TSP message: {body}")
         (sender, receiver) = self._store.get_sender_receiver(body)
@@ -189,13 +181,14 @@ class SseServerTransport:
             response = Response("Incorrect receiver", status_code=400)
             return await response(scope, receive, send)
 
-        self._store.resolve_did_web(
-            sender
-        )  # TODO: only do this once during connection establishment
-
         json_text = self._store.open_message(body).message
-
         logger.info(f"Decoded TSP message: {json_text}")
+
+        writer = self._read_stream_writers.get(sender)
+        if not writer:
+            logger.warning(f"Could not find session for ID: {sender}")
+            response = Response("Could not find session", status_code=404)
+            return await response(scope, receive, send)
 
         try:
             message = types.JSONRPCMessage.model_validate_json(json_text)

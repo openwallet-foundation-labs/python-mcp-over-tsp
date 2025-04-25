@@ -1,8 +1,9 @@
+import base64
 import json
 import logging
 from contextlib import asynccontextmanager
 from typing import Any
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 from uuid import uuid4
 
 import anyio
@@ -11,11 +12,19 @@ import requests
 import tsp_python as tsp
 from anyio.abc import TaskStatus
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
-from httpx_sse import aconnect_sse
+from httpx_sse import ServerSentEvent, aconnect_sse
 
 import mcp.types as types
 
 logger = logging.getLogger(__name__)
+
+
+def add_request_params(url: str, params: dict) -> str:
+    url = urlparse(url)
+    query = dict(parse_qsl(url.query))
+    query.update(params)
+    url = url._replace(query=urlencode(query))
+    return urlunparse(url)
 
 
 def remove_request_params(url: str) -> str:
@@ -66,6 +75,7 @@ async def sse_client(
     # Resolve server
     url = store.resolve_did_web(server_did)
     print("Server endpoint:", url)
+    url = add_request_params(url, {"did": did})
 
     async with anyio.create_task_group() as tg:
         try:
@@ -85,6 +95,12 @@ async def sse_client(
                     ):
                         try:
                             async for sse in event_source.aiter_sse():
+                                # Open TSP message
+                                tsp_message = base64.b64decode(sse.data, "-_")
+                                json_message = store.open_message(tsp_message).message
+                                json_data = json.loads(json_message)
+                                sse = ServerSentEvent(**json_data)
+
                                 logger.debug(f"Received SSE event: {sse.event}")
                                 match sse.event:
                                     case "endpoint":
@@ -151,7 +167,6 @@ async def sse_client(
                                     _, tsp_message = store.seal_message(
                                         did, server_did, json_message
                                     )
-                                    print("Sending POST message:", tsp_message)
                                     response = await client.post(
                                         endpoint_url, data=tsp_message
                                     )
