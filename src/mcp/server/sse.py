@@ -37,7 +37,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any
 from urllib.parse import quote
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import anyio
 import requests
@@ -71,7 +71,7 @@ class SseServerTransport:
         str, MemoryObjectSendStream[types.JSONRPCMessage | Exception]
     ]
 
-    def __init__(self, transport: str, endpoint: str) -> None:
+    def __init__(self, name: str, transport: str, endpoint: str) -> None:
         """
         Creates a new SSE server transport, which will direct the client to POST
         messages to the relative or absolute URL given.
@@ -82,26 +82,30 @@ class SseServerTransport:
         self._read_stream_writers = {}
         logger.debug(f"SseServerTransport initialized with endpoint: {endpoint}")
 
-        self._store = tsp.SecureStore()
+        self._wallet = tsp.SecureStore()
+        self._did = self._wallet.resolve_alias(name)
 
-        # Initialize TSP identity
-        name = "McpServer" + str(uuid4()).replace("-", "")
-        self._did = "did:web:did.teaspoon.world:endpoint:" + name
-        identity = tsp.OwnedVid.bind(self._did, transport)
+        if self._did is None:
+            # Initialize TSP identity
+            self._did = f"did:web:did.teaspoon.world:endpoint:McpServer{name}{str(uuid4()).replace('-', '')}"
+            identity = tsp.OwnedVid.bind(self._did, transport)
 
-        # Publish DID (this is non-standard and dependents on the implementation of the DID support server)
-        response = requests.post(
-            "https://did.teaspoon.world/add-vid",
-            data=identity.json(),
-            headers={"Content-type": "application/json"},
-        )
-        if not response.ok:
-            raise Exception(
-                f"Could not publish DID (status code: {response.status_code}):\n{identity.json()}"
+            # Publish DID (this is non-standard and dependents on the implementation of the DID support server)
+            response = requests.post(
+                "https://did.teaspoon.world/add-vid",
+                data=identity.json(),
+                headers={"Content-type": "application/json"},
             )
-        print("Published server DID: " + self._did)
+            if not response.ok:
+                raise Exception(
+                    f"Could not publish DID (status code: {response.status_code}):\n{identity.json()}"
+                )
+            print("Published server DID: " + self._did)
 
-        self._store.add_private_vid(identity)
+            self._wallet.add_private_vid(identity, name)
+
+        else:
+            print("Using existing DID: " + self._did)
 
     @asynccontextmanager
     async def connect_sse(self, scope: Scope, receive: Receive, send: Send):
@@ -124,7 +128,7 @@ class SseServerTransport:
         if user_did is None:
             logger.warning("Received request without user did")
             raise Exception("did is required")
-        self._store.resolve_did_web(user_did)
+        self._wallet.resolve_did_web(user_did)
 
         session_uri = quote(self._endpoint)
         logger.debug(f"Created new session with ID: {user_did}")
@@ -135,10 +139,12 @@ class SseServerTransport:
         ](0)
 
         async def sse_send(event, data):
-            self._store.resolve_did_web(user_did)
+            self._wallet.resolve_did_web(user_did)
             json_message = json.dumps({"event": event, "data": data}).encode("utf-8")
             logger.debug(f"Encoding TSP message: {json_message}")
-            _, tsp_message = self._store.seal_message(self._did, user_did, json_message)
+            _, tsp_message = self._wallet.seal_message(
+                self._did, user_did, json_message
+            )
             encoded_message = base64.b64encode(tsp_message, b"-_").decode("ascii")
             logger.info(f"Sending TSP message: {encoded_message}")
             await sse_stream_writer.send({"event": "message", "data": encoded_message})
@@ -175,13 +181,13 @@ class SseServerTransport:
         # Open TSP message (only works for known sender DIDs)
         body = await request.body()
         logger.debug(f"Received TSP message: {body}")
-        (sender, receiver) = self._store.get_sender_receiver(body)
+        (sender, receiver) = self._wallet.get_sender_receiver(body)
         if receiver != self._did:
             logger.warning(f"Received message intended for: {receiver}")
             response = Response("Incorrect receiver", status_code=400)
             return await response(scope, receive, send)
 
-        json_text = self._store.open_message(body).message
+        json_text = self._wallet.open_message(body).message
         logger.info(f"Decoded TSP message: {json_text}")
 
         writer = self._read_stream_writers.get(sender)

@@ -493,7 +493,7 @@ class TMCP:
     def sse_app(self) -> Starlette:
         """Return an instance of the SSE server app."""
         sse = SseServerTransport(
-            self.settings.tsp_transport, self.settings.message_path
+            self._mcp_server.name, self.settings.tsp_transport, self.settings.message_path
         )
 
         async def handle_sse(request: Request) -> None:

@@ -10,17 +10,18 @@ from mcp.client.sse import sse_client
 load_dotenv()  # load environment variables from .env
 
 
-class MCPClient:
-    def __init__(self):
+class TMCPClient:
+    def __init__(self, name: str):
         # Initialize session and client objects
         self.session: mcp.ClientSession | None = None
         self.exit_stack = AsyncExitStack()
         self.anthropic = Anthropic()
+        self.name = name
 
     async def connect_to_server(self, server_did: str):
         """Connect to an MCP server"""
         self.read, self.write = await self.exit_stack.enter_async_context(
-            sse_client(server_did)
+            sse_client(self.name, server_did)
         )
 
         self.session = await self.exit_stack.enter_async_context(
@@ -131,7 +132,7 @@ async def main():
         )
         sys.exit(1)
 
-    client = MCPClient()
+    client = TMCPClient("Demo")
     try:
         await client.connect_to_server(sys.argv[1])
         await client.chat_loop()

@@ -33,6 +33,7 @@ def remove_request_params(url: str) -> str:
 
 @asynccontextmanager
 async def sse_client(
+    name: str,
     server_did: str,
     headers: dict[str, Any] | None = None,
     timeout: float = 5,
@@ -53,27 +54,31 @@ async def sse_client(
     read_stream_writer, read_stream = anyio.create_memory_object_stream(0)
     write_stream, write_stream_reader = anyio.create_memory_object_stream(0)
 
-    store = tsp.SecureStore()
+    wallet = tsp.SecureStore()
+    did = wallet.resolve_alias(name)
 
-    # Initialize TSP identity
-    name = "McpClient" + str(uuid4()).replace("-", "")
-    did = "did:web:did.teaspoon.world:endpoint:" + name
-    identity = tsp.OwnedVid.bind(did, "tmcpclient://")
+    if did is None:
+        # Initialize TSP identity
+        did = f"did:web:did.teaspoon.world:endpoint:McpClient{name}{str(uuid4()).replace('-', '')}"
+        identity = tsp.OwnedVid.bind(did, "tmcpclient://")
 
-    # Publish DID (this is non-standard and dependents on the implementation of the DID support server)
-    response = requests.post(
-        "https://did.teaspoon.world/add-vid",
-        data=identity.json(),
-        headers={"Content-type": "application/json"},
-    )
-    if not response.ok:
-        raise Exception(f"Could not publish DID (status code: {response.status_code})")
-    print("Published client DID:", did)
+        # Publish DID (this is non-standard and dependents on the implementation of the DID support server)
+        response = requests.post(
+            "https://did.teaspoon.world/add-vid",
+            data=identity.json(),
+            headers={"Content-type": "application/json"},
+        )
+        if not response.ok:
+            raise Exception(f"Could not publish DID (status code: {response.status_code})")
+        print("Published client DID:", did)
 
-    store.add_private_vid(identity)
+        wallet.add_private_vid(identity, name)
 
+    else:
+        print("Using existing DID: " + did)
+        
     # Resolve server
-    url = store.resolve_did_web(server_did)
+    url = wallet.resolve_did_web(server_did)
     print("Server endpoint:", url)
     url = add_request_params(url, {"did": did})
 
@@ -97,7 +102,7 @@ async def sse_client(
                             async for sse in event_source.aiter_sse():
                                 # Open TSP message
                                 tsp_message = base64.b64decode(sse.data, "-_")
-                                json_message = store.open_message(tsp_message).message
+                                json_message = wallet.open_message(tsp_message).message
                                 json_data = json.loads(json_message)
                                 sse = ServerSentEvent(**json_data)
 
@@ -164,7 +169,7 @@ async def sse_client(
                                             exclude_none=True,
                                         )
                                     ).encode("utf-8")
-                                    _, tsp_message = store.seal_message(
+                                    _, tsp_message = wallet.seal_message(
                                         did, server_did, json_message
                                     )
                                     response = await client.post(
