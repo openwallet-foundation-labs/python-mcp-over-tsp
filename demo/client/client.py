@@ -17,14 +17,10 @@ class MCPClient:
         self.exit_stack = AsyncExitStack()
         self.anthropic = Anthropic()
 
-    async def connect_to_server(self, sse_url: str):
-        """Connect to an MCP server
-
-        Args:
-            server_script_path: Path to the server script (.py or .js)
-        """
+    async def connect_to_server(self, server_did: str):
+        """Connect to an MCP server"""
         self.read, self.write = await self.exit_stack.enter_async_context(
-            sse_client(sse_url)
+            sse_client(server_did)
         )
 
         self.session = await self.exit_stack.enter_async_context(
@@ -130,7 +126,9 @@ class MCPClient:
 
 async def main():
     if len(sys.argv) < 2:
-        print("Usage: uv run client.py did:web:did.teaspoon.world:user:YourMcpServer")
+        print(
+            "Usage: uv run client.py did:web:did.teaspoon.world:endpoint:YourMcpServer"
+        )
         sys.exit(1)
 
     client = MCPClient()

@@ -1,4 +1,4 @@
-"""FastMCP - A more ergonomic interface for MCP servers."""
+"""TMCP - A more ergonomic interface for MCP servers."""
 
 from __future__ import annotations as _annotations
 
@@ -53,7 +53,7 @@ logger = get_logger(__name__)
 
 
 class Settings(BaseSettings, Generic[LifespanResultT]):
-    """FastMCP server settings.
+    """TMCP server settings.
 
     All settings can be configured via environment variables with the prefix FASTMCP_.
     For example, FASTMCP_DEBUG=true will set debug=True.
@@ -90,14 +90,14 @@ class Settings(BaseSettings, Generic[LifespanResultT]):
         description="List of dependencies to install in the server environment",
     )
 
-    lifespan: (
-        Callable[[FastMCP], AbstractAsyncContextManager[LifespanResultT]] | None
-    ) = Field(None, description="Lifespan context manager")
+    lifespan: Callable[[TMCP], AbstractAsyncContextManager[LifespanResultT]] | None = (
+        Field(None, description="Lifespan context manager")
+    )
 
 
 def lifespan_wrapper(
-    app: FastMCP,
-    lifespan: Callable[[FastMCP], AbstractAsyncContextManager[LifespanResultT]],
+    app: TMCP,
+    lifespan: Callable[[TMCP], AbstractAsyncContextManager[LifespanResultT]],
 ) -> Callable[[MCPServer[LifespanResultT]], AbstractAsyncContextManager[object]]:
     @asynccontextmanager
     async def wrap(s: MCPServer[LifespanResultT]) -> AsyncIterator[object]:
@@ -107,14 +107,14 @@ def lifespan_wrapper(
     return wrap
 
 
-class FastMCP:
+class TMCP:
     def __init__(
         self, name: str | None = None, instructions: str | None = None, **settings: Any
     ):
         self.settings = Settings(**settings)
 
         self._mcp_server = MCPServer(
-            name=name or "FastMCP",
+            name=name or "TMCP",
             instructions=instructions,
             lifespan=lifespan_wrapper(self, self.settings.lifespan)
             if self.settings.lifespan
@@ -146,7 +146,7 @@ class FastMCP:
         return self._mcp_server.instructions
 
     def run(self, transport: Literal["stdio", "sse"] = "stdio") -> None:
-        """Run the FastMCP server. Note this is a synchronous function.
+        """Run the TMCP server. Note this is a synchronous function.
 
         Args:
             transport: Transport protocol to use ("stdio" or "sse")
@@ -605,13 +605,13 @@ class Context(BaseModel, Generic[ServerSessionT, LifespanContextT]):
     """
 
     _request_context: RequestContext[ServerSessionT, LifespanContextT] | None
-    _fastmcp: FastMCP | None
+    _fastmcp: TMCP | None
 
     def __init__(
         self,
         *,
         request_context: RequestContext[ServerSessionT, LifespanContextT] | None = None,
-        fastmcp: FastMCP | None = None,
+        fastmcp: TMCP | None = None,
         **kwargs: Any,
     ):
         super().__init__(**kwargs)
@@ -619,8 +619,8 @@ class Context(BaseModel, Generic[ServerSessionT, LifespanContextT]):
         self._fastmcp = fastmcp
 
     @property
-    def fastmcp(self) -> FastMCP:
-        """Access to the FastMCP server."""
+    def fastmcp(self) -> TMCP:
+        """Access to the TMCP server."""
         if self._fastmcp is None:
             raise ValueError("Context is not available outside of a request")
         return self._fastmcp
@@ -664,9 +664,9 @@ class Context(BaseModel, Generic[ServerSessionT, LifespanContextT]):
         Returns:
             The resource content as either text or bytes
         """
-        assert self._fastmcp is not None, (
-            "Context is not available outside of a request"
-        )
+        assert (
+            self._fastmcp is not None
+        ), "Context is not available outside of a request"
         return await self._fastmcp.read_resource(uri)
 
     async def log(

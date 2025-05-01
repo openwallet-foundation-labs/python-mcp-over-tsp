@@ -57,8 +57,8 @@ async def sse_client(
 
     # Initialize TSP identity
     name = "McpClient" + str(uuid4()).replace("-", "")
-    did = "did:web:did.teaspoon.world:user:" + name
-    identity = tsp.OwnedVid.bind(did, "mcpclient://")
+    did = "did:web:did.teaspoon.world:endpoint:" + name
+    identity = tsp.OwnedVid.bind(did, "tmcpclient://")
 
     # Publish DID (this is non-standard and dependents on the implementation of the DID support server)
     response = requests.post(

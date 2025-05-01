@@ -86,7 +86,7 @@ class SseServerTransport:
 
         # Initialize TSP identity
         name = "McpServer" + str(uuid4()).replace("-", "")
-        self._did = "did:web:did.teaspoon.world:user:" + name
+        self._did = "did:web:did.teaspoon.world:endpoint:" + name
         identity = tsp.OwnedVid.bind(self._did, transport)
 
         # Publish DID (this is non-standard and dependents on the implementation of the DID support server)
