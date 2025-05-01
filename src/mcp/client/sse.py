@@ -59,7 +59,7 @@ async def sse_client(
 
     if did is None:
         # Initialize TSP identity
-        did = f"did:web:did.teaspoon.world:endpoint:McpClient{name}{str(uuid4()).replace('-', '')}"
+        did = f"did:web:did.teaspoon.world:endpoint:tmcp_client-{name}-{uuid4()}"
         identity = tsp.OwnedVid.bind(did, "tmcpclient://")
 
         # Publish DID (this is non-standard and dependents on the implementation of the DID support server)
@@ -69,14 +69,16 @@ async def sse_client(
             headers={"Content-type": "application/json"},
         )
         if not response.ok:
-            raise Exception(f"Could not publish DID (status code: {response.status_code})")
+            raise Exception(
+                f"Could not publish DID (status code: {response.status_code})"
+            )
         print("Published client DID:", did)
 
         wallet.add_private_vid(identity, name)
 
     else:
         print("Using existing DID: " + did)
-        
+
     # Resolve server
     url = wallet.resolve_did_web(server_did)
     print("Server endpoint:", url)

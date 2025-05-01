@@ -87,7 +87,9 @@ class SseServerTransport:
 
         if self._did is None:
             # Initialize TSP identity
-            self._did = f"did:web:did.teaspoon.world:endpoint:McpServer{name}{str(uuid4()).replace('-', '')}"
+            self._did = (
+                f"did:web:did.teaspoon.world:endpoint:tmcp_server-{name}-{uuid4()}"
+            )
             identity = tsp.OwnedVid.bind(self._did, transport)
 
             # Publish DID (this is non-standard and dependents on the implementation of the DID support server)
@@ -141,12 +143,13 @@ class SseServerTransport:
         async def sse_send(event, data):
             self._wallet.resolve_did_web(user_did)
             json_message = json.dumps({"event": event, "data": data}).encode("utf-8")
-            logger.debug(f"Encoding TSP message: {json_message}")
+            logger.info(f"Encoding TSP message: {json_message}")
             _, tsp_message = self._wallet.seal_message(
                 self._did, user_did, json_message
             )
-            encoded_message = base64.b64encode(tsp_message, b"-_").decode("ascii")
-            logger.info(f"Sending TSP message: {encoded_message}")
+            logger.info("Sending TSP message:")
+            tsp.color_print(tsp_message)
+            encoded_message = base64.b64encode(tsp_message, b"-_").decode()
             await sse_stream_writer.send({"event": "message", "data": encoded_message})
 
         async def sse_writer():
@@ -156,7 +159,6 @@ class SseServerTransport:
                 logger.debug(f"Sent endpoint event: {session_uri}")
 
                 async for message in write_stream_reader:
-                    logger.debug(f"Sending message via SSE: {message}")
                     await sse_send(
                         "message",
                         message.model_dump_json(by_alias=True, exclude_none=True),
@@ -180,7 +182,8 @@ class SseServerTransport:
 
         # Open TSP message (only works for known sender DIDs)
         body = await request.body()
-        logger.debug(f"Received TSP message: {body}")
+        logger.info("Received TSP message:")
+        tsp.color_print(body)
         (sender, receiver) = self._wallet.get_sender_receiver(body)
         if receiver != self._did:
             logger.warning(f"Received message intended for: {receiver}")
