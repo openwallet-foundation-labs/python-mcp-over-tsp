@@ -60,9 +60,13 @@ async def sse_client(
     if did is None:
         # Initialize TSP identity
         did = f"did:web:did.teaspoon.world:endpoint:tmcp_client-{name}-{uuid4()}"
-        identity = tsp.OwnedVid.bind(did, "tmcpclient://")
+        identity = tsp.OwnedVid.bind(
+            did,
+            "tmcpclient://",  # clients are not publicly accessible
+        )
 
-        # Publish DID (this is non-standard and dependents on the implementation of the DID support server)
+        # Publish DID (this is non-standard and dependents on the implementation of the
+        # DID support server)
         response = requests.post(
             "https://did.teaspoon.world/add-vid",
             data=identity.json(),

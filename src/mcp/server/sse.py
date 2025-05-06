@@ -92,7 +92,8 @@ class SseServerTransport:
             )
             identity = tsp.OwnedVid.bind(self._did, transport)
 
-            # Publish DID (this is non-standard and dependents on the implementation of the DID support server)
+            # Publish DID (this is non-standard and dependents on the implementation of
+            # the DID support server)
             response = requests.post(
                 "https://did.teaspoon.world/add-vid",
                 data=identity.json(),
@@ -100,7 +101,8 @@ class SseServerTransport:
             )
             if not response.ok:
                 raise Exception(
-                    f"Could not publish DID (status code: {response.status_code}):\n{identity.json()}"
+                    f"Could not publish DID (status code: {response.status_code}):"
+                    f"\n{identity.json()}"
                 )
             print("Published server DID: " + self._did)
 
