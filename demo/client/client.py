@@ -21,7 +21,12 @@ class TMCPClient:
     async def connect_to_server(self, server_did: str):
         """Connect to an MCP server"""
         self.read, self.write = await self.exit_stack.enter_async_context(
-            sse_client(self.name, server_did)
+            sse_client(
+                self.name,
+                server_did,
+                did_format="did:web:did.teaspoon.world:endpoint:tmcp_client-{name}-{uuid}",
+                did_publish_url="https://did.teaspoon.world/add-vid",
+            )
         )
 
         self.session = await self.exit_stack.enter_async_context(

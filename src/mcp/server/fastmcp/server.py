@@ -75,6 +75,8 @@ class Settings(BaseSettings, Generic[LifespanResultT]):
     sse_path: str = "/sse"
     message_path: str = "/messages/"
     tsp_transport: str = "http://127.0.0.1:8000/sse"
+    did_format: str = "did:web:did.teaspoon.world:endpoint:tmcp_server-{name}-{uuid}"
+    did_publish_url: str = "https://did.teaspoon.world/add-vid"
 
     # resource settings
     warn_on_duplicate_resources: bool = True
@@ -496,6 +498,8 @@ class TMCP:
             self._mcp_server.name,
             self.settings.tsp_transport,
             self.settings.message_path,
+            self.settings.did_format,
+            self.settings.did_publish_url,
         )
 
         async def handle_sse(request: Request) -> None:

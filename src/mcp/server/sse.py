@@ -71,7 +71,14 @@ class SseServerTransport:
         str, MemoryObjectSendStream[types.JSONRPCMessage | Exception]
     ]
 
-    def __init__(self, name: str, transport: str, endpoint: str) -> None:
+    def __init__(
+        self,
+        name: str,
+        transport: str,
+        endpoint: str,
+        did_format: str,
+        did_publish_url: str,
+    ) -> None:
         """
         Creates a new SSE server transport, which will direct the client to POST
         messages to the relative or absolute URL given.
@@ -87,15 +94,12 @@ class SseServerTransport:
 
         if self._did is None:
             # Initialize TSP identity
-            self._did = (
-                f"did:web:did.teaspoon.world:endpoint:tmcp_server-{name}-{uuid4()}"
-            )
+            self._did = did_format.format(name=name, uuid=uuid4())
             identity = tsp.OwnedVid.bind(self._did, transport)
 
-            # Publish DID (this is non-standard and dependents on the implementation of
-            # the DID support server)
+            # Publish DID
             response = requests.post(
-                "https://did.teaspoon.world/add-vid",
+                did_publish_url,
                 data=identity.json(),
                 headers={"Content-type": "application/json"},
             )

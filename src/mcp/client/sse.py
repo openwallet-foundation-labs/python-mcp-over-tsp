@@ -35,6 +35,8 @@ def remove_request_params(url: str) -> str:
 async def sse_client(
     name: str,
     server_did: str,
+    did_format: str,
+    did_publish_url: str,
     headers: dict[str, Any] | None = None,
     timeout: float = 5,
     sse_read_timeout: float = 60 * 5,
@@ -59,16 +61,15 @@ async def sse_client(
 
     if did is None:
         # Initialize TSP identity
-        did = f"did:web:did.teaspoon.world:endpoint:tmcp_client-{name}-{uuid4()}"
+        did = did_format.format(name=name, uuid=uuid4())
         identity = tsp.OwnedVid.bind(
             did,
             "tmcpclient://",  # clients are not publicly accessible
         )
 
-        # Publish DID (this is non-standard and dependents on the implementation of the
-        # DID support server)
+        # Publish DID
         response = requests.post(
-            "https://did.teaspoon.world/add-vid",
+            did_publish_url,
             data=identity.json(),
             headers={"Content-type": "application/json"},
         )
