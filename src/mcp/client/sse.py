@@ -85,7 +85,7 @@ async def sse_client(
         print("Using existing DID: " + did)
 
     # Resolve server
-    url = wallet.resolve_did_web(server_did)
+    url = wallet.verify_vid(server_did)
     print("Server endpoint:", url)
     url = add_request_params(url, {"did": did})
 

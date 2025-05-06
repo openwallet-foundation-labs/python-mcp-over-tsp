@@ -136,7 +136,7 @@ class SseServerTransport:
         if user_did is None:
             logger.warning("Received request without user did")
             raise Exception("did is required")
-        self._wallet.resolve_did_web(user_did)
+        self._wallet.verify_vid(user_did)
 
         session_uri = quote(self._endpoint)
         logger.debug(f"Created new session with ID: {user_did}")
@@ -147,7 +147,6 @@ class SseServerTransport:
         ](0)
 
         async def sse_send(event, data):
-            self._wallet.resolve_did_web(user_did)
             json_message = json.dumps({"event": event, "data": data}).encode("utf-8")
             logger.info(f"Encoding TSP message: {json_message}")
             _, tsp_message = self._wallet.seal_message(
