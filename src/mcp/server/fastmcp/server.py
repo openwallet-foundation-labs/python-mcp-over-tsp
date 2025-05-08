@@ -74,9 +74,9 @@ class Settings(BaseSettings, Generic[LifespanResultT]):
     port: int = 8000
     sse_path: str = "/sse"
     message_path: str = "/messages/"
-    tsp_transport: str = "http://127.0.0.1:8000/sse"
-    did_format: str = "did:web:did.teaspoon.world:endpoint:tmcp_server-{name}-{uuid}"
-    did_publish_url: str = "https://did.teaspoon.world/add-vid"
+    tmcp_settings: Any = {
+        "transport": "http://127.0.0.1:8000/sse",
+    }
 
     # resource settings
     warn_on_duplicate_resources: bool = True
@@ -496,10 +496,8 @@ class TMCP:
         """Return an instance of the SSE server app."""
         sse = SseServerTransport(
             self._mcp_server.name,
-            self.settings.tsp_transport,
             self.settings.message_path,
-            self.settings.did_format,
-            self.settings.did_publish_url,
+            **self.settings.tmcp_settings,
         )
 
         async def handle_sse(request: Request) -> None:

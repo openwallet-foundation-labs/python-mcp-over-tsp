@@ -4,17 +4,16 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
-from uuid import uuid4
 
 import anyio
 import httpx
-import requests
 import tsp_python as tsp
 from anyio.abc import TaskStatus
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from httpx_sse import ServerSentEvent, aconnect_sse
 
 import mcp.types as types
+from mcp.shared.tmcp import get_or_create_identity
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +34,10 @@ def remove_request_params(url: str) -> str:
 async def sse_client(
     name: str,
     server_did: str,
-    did_format: str,
-    did_publish_url: str,
     headers: dict[str, Any] | None = None,
     timeout: float = 5,
     sse_read_timeout: float = 60 * 5,
+    **tmcp_settings: Any,
 ):
     """
     Client transport for SSE.
@@ -57,32 +55,7 @@ async def sse_client(
     write_stream, write_stream_reader = anyio.create_memory_object_stream(0)
 
     wallet = tsp.SecureStore()
-    did = wallet.resolve_alias(name)
-
-    if did is None:
-        # Initialize TSP identity
-        did = did_format.format(name=name, uuid=uuid4())
-        identity = tsp.OwnedVid.bind(
-            did,
-            "tmcpclient://",  # clients are not publicly accessible
-        )
-
-        # Publish DID
-        response = requests.post(
-            did_publish_url,
-            data=identity.json(),
-            headers={"Content-type": "application/json"},
-        )
-        if not response.ok:
-            raise Exception(
-                f"Could not publish DID (status code: {response.status_code})"
-            )
-        print("Published client DID:", did)
-
-        wallet.add_private_vid(identity, name)
-
-    else:
-        print("Using existing DID: " + did)
+    did = get_or_create_identity(wallet, alias=f"{name}TmcpClient", **tmcp_settings)
 
     # Resolve server
     url = wallet.verify_vid(server_did)

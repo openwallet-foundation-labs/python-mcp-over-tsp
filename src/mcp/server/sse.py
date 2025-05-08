@@ -50,6 +50,7 @@ from starlette.responses import Response
 from starlette.types import Receive, Scope, Send
 
 import mcp.types as types
+from mcp.shared.tmcp import get_or_create_identity
 
 logger = logging.getLogger(__name__)
 
@@ -71,14 +72,7 @@ class SseServerTransport:
         str, MemoryObjectSendStream[types.JSONRPCMessage | Exception]
     ]
 
-    def __init__(
-        self,
-        name: str,
-        transport: str,
-        endpoint: str,
-        did_format: str,
-        did_publish_url: str,
-    ) -> None:
+    def __init__(self, name: str, endpoint: str, **tmcp_settings: Any) -> None:
         """
         Creates a new SSE server transport, which will direct the client to POST
         messages to the relative or absolute URL given.
@@ -90,30 +84,9 @@ class SseServerTransport:
         logger.debug(f"SseServerTransport initialized with endpoint: {endpoint}")
 
         self._wallet = tsp.SecureStore()
-        self._did = self._wallet.resolve_alias(name)
-
-        if self._did is None:
-            # Initialize TSP identity
-            self._did = did_format.format(name=name, uuid=uuid4())
-            identity = tsp.OwnedVid.bind(self._did, transport)
-
-            # Publish DID
-            response = requests.post(
-                did_publish_url,
-                data=identity.json(),
-                headers={"Content-type": "application/json"},
-            )
-            if not response.ok:
-                raise Exception(
-                    f"Could not publish DID (status code: {response.status_code}):"
-                    f"\n{identity.json()}"
-                )
-            print("Published server DID: " + self._did)
-
-            self._wallet.add_private_vid(identity, name)
-
-        else:
-            print("Using existing DID: " + self._did)
+        self._did = get_or_create_identity(
+            self._wallet, alias=f"{name}TmcpServer", **tmcp_settings
+        )
 
     @asynccontextmanager
     async def connect_sse(self, scope: Scope, receive: Receive, send: Send):
